@@ -6,7 +6,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
-  
+
 // NewClientset builds a clientset from the given kubeconfig path. 
 func NewClientset(kubeconfig string) (kubernetes.Interface, error) {
 	cfg, err := clientcmd.BuildConfigFromFlags("", kubeconfig)

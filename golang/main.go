@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/SowmyaRahul/tyk-sre-assignment/internal/k8s"
+	"github.com/SowmyaRahul/tyk-sre-assignment/internal/server"
 )
 
 func main() {
@@ -23,29 +24,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 	fmt.Printf("Connected to Kubernetes %s\n", version)
 
-	if err := startServer(*listenAddr); err != nil {
+	srv := server.New(clientset)
+
+	fmt.Printf("Server listening on %s\n", *listenAddr)
+	if err := http.ListenAndServe(*listenAddr, srv.Handler()); err != nil {
 		panic(err)
-	}
-}
-
-// launches an HTTP server with defined handlers 
-func startServer(listenAddr string) error {
-	http.HandleFunc("/healthz", healthHandler)
-
-	fmt.Printf("Server listening on %s\n", listenAddr)
-
-	return http.ListenAndServe(listenAddr, nil)
-}
-
-// responds with the health status of the application.
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-
-	_, err := w.Write([]byte("ok"))
-	if err != nil {
-		fmt.Println("failed writing to response")
 	}
 }
