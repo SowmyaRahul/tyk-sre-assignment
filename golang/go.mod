@@ -1,6 +1,6 @@
-module github.com/TykTechnologies/tyk-sre-assignment
+module github.com/SowmyaRahul/tyk-sre-assignment
 
-go 1.19
+go 1.26
 
 require (
 	github.com/stretchr/testify v1.8.2
