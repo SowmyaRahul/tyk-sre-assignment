@@ -24,3 +24,19 @@ func ServerVersion(cs kubernetes.Interface) (string, error) {
 	}
 	return v.String(), nil
 }
+
+// Pinger reports whether the API server is reachable.
+type Pinger interface {
+	Ping() error
+}
+
+type pinger struct{ cs kubernetes.Interface }
+
+// NewPinger returns a Pinger backed by the given clientset.
+func NewPinger(cs kubernetes.Interface) Pinger { return &pinger{cs: cs} }
+
+
+func (p *pinger) Ping() error {
+	_, err := p.cs.Discovery().ServerVersion()
+	return err
+}

@@ -26,7 +26,7 @@ func main() {
 	}
 	fmt.Printf("Connected to Kubernetes %s\n", version)
 
-	srv := server.New(clientset)
+	srv := server.New(clientset, k8s.NewPinger(clientset))
 
 	fmt.Printf("Server listening on %s\n", *listenAddr)
 	if err := http.ListenAndServe(*listenAddr, srv.Handler()); err != nil {
