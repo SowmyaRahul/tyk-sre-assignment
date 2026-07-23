@@ -6,7 +6,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
-  
+
 // NewClientset builds a clientset from the given kubeconfig path. 
 func NewClientset(kubeconfig string) (kubernetes.Interface, error) {
 	cfg, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
@@ -23,4 +23,20 @@ func ServerVersion(cs kubernetes.Interface) (string, error) {
 		return "", err
 	}
 	return v.String(), nil
+}
+
+// Pinger reports whether the API server is reachable.
+type Pinger interface {
+	Ping() error
+}
+
+type pinger struct{ cs kubernetes.Interface }
+
+// NewPinger returns a Pinger backed by the given clientset.
+func NewPinger(cs kubernetes.Interface) Pinger { return &pinger{cs: cs} }
+
+
+func (p *pinger) Ping() error {
+	_, err := p.cs.Discovery().ServerVersion()
+	return err
 }
