@@ -1,3 +1,5 @@
+// commit_11 (isolation): POST /isolation tests (when/then).
+// commit_12: added GET /isolation (list) coverage.
 package server
 
 import (
@@ -38,5 +40,18 @@ func TestCreateIsolation(t *testing.T) {
 		srv := newSrv()
 		assert.Equal(t, http.StatusCreated, postIso(srv, "s3cret").Code)
 		assert.Equal(t, http.StatusOK, postIso(srv, "s3cret").Code)
+	})
+}
+
+func TestListIsolation(t *testing.T) {
+	t.Run("when GET /isolation then it returns 200 without a token (read-only is open)", func(t *testing.T) {
+		// Given a server with one isolation applied
+		srv := newSrv()
+		postIso(srv, "s3cret")
+		// When we GET /isolation with no token
+		rec := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/isolation", nil))
+		// Then it is 200
+		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 }

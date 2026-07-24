@@ -7,6 +7,7 @@ import (
 	"github.com/SowmyaRahul/tyk-sre-assignment/internal/isolation"
 )
 
+// handleIsolationCollection serves POST (create, gated) and GET (list, open).
 func (s *Server) handleIsolationCollection(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
@@ -15,8 +16,10 @@ func (s *Server) handleIsolationCollection(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		s.createIsolation(w, r)
+	case http.MethodGet:
+		s.listIsolation(w, r)
 	default:
-		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use POST")
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use POST or GET")
 	}
 }
 
@@ -40,4 +43,13 @@ func (s *Server) createIsolation(w http.ResponseWriter, r *http.Request) {
 		status = http.StatusOK
 	}
 	writeJSON(w, status, map[string]interface{}{"id": id, "converged": converged})
+}
+
+func (s *Server) listIsolation(w http.ResponseWriter, r *http.Request) {
+	items, err := s.mgr.List(r.Context())
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "list_failed", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{"isolations": items})
 }
