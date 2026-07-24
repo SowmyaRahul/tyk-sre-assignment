@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
@@ -22,13 +21,32 @@ func TestManager_Apply(t *testing.T) {
 
 		// When we apply the same pair again
 		id2, converged2, err := m.Apply(ctx, sampleReq(), "api")
-		// Then it converges to the same id
 		assert.NoError(t, err)
 		assert.Equal(t, id1, id2)
-		assert.True(t, converged2)
+		assert.True(t, converged2) // second time: converged
 
-		pols, err := cs.NetworkingV1().NetworkPolicies("").List(ctx, metav1.ListOptions{})
+		got, err := m.List(ctx)
 		assert.NoError(t, err)
-		assert.Len(t, pols.Items, 2)
+		assert.Len(t, got[id1], 2)
+	})
+}
+
+func TestManager_Delete(t *testing.T) {
+	t.Run("when an isolation is deleted then both policies are removed and re-deleting is a no-op", func(t *testing.T) {
+		// Given an applied isolation
+		cs := fake.NewSimpleClientset()
+		m := NewManager(cs)
+		ctx := context.Background()
+		id, _, _ := m.Apply(ctx, sampleReq(), "api")
+
+		n, err := m.Delete(ctx, id)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, n)
+		got, _ := m.List(ctx)
+		assert.Len(t, got[id], 0)
+
+		n, err = m.Delete(ctx, id)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, n)
 	})
 }
