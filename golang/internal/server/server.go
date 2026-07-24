@@ -25,6 +25,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", s.handleHealthz)
 	mux.HandleFunc("/readyz", s.handleReadyz)
+	mux.HandleFunc("/deployments", s.handleDeployments) // commit_6
 	return mux
 }
 
@@ -36,7 +37,7 @@ func (s *Server) handleHealthz(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-// handleReadyz is the readiness probe: it reports API-server connectivity 
+// handleReadyz is the readiness probe: it reports API-server connectivity (#3).
 func (s *Server) handleReadyz(w http.ResponseWriter, _ *http.Request) {
 	if err := s.pinger.Ping(); err != nil {
 		writeError(w, http.StatusServiceUnavailable, "api_unreachable", err.Error())
