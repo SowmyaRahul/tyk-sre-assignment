@@ -15,8 +15,8 @@ import (
 const (
 	LabelManagedBy   = "app.kubernetes.io/managed-by"
 	LabelPartOf      = "app.kubernetes.io/part-of"
-	LabelIsolationID = "keights-pod-tracker.io/isolation-id"
-	ManagedByValue   = "keights-pod-tracker"
+	LabelIsolationID = "tyk-sre-assignment.io/isolation-id"
+	ManagedByValue   = "tyk-sre-assignment"
 	nsNameLabel      = "kubernetes.io/metadata.name"
 )
 
@@ -104,9 +104,9 @@ func policyFor(side string, self, peer Workload, id, createdBy string) networkin
 				LabelIsolationID: id,
 			},
 			Annotations: map[string]string{
-				"keights-pod-tracker.io/created-at": time.Now().UTC().Format(time.RFC3339),
-				"keights-pod-tracker.io/pair":       pairDesc,
-				"keights-pod-tracker.io/created-by": createdBy,
+				"tyk-sre-assignment.io/created-at": time.Now().UTC().Format(time.RFC3339),
+				"tyk-sre-assignment.io/pair":       pairDesc,
+				"tyk-sre-assignment.io/created-by": createdBy,
 			},
 		},
 		Spec: networkingv1.NetworkPolicySpec{

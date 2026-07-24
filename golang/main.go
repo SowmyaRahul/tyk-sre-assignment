@@ -10,10 +10,10 @@ import (
 	"github.com/SowmyaRahul/tyk-sre-assignment/internal/server"
 )
 
+
 func main() {
 	kubeconfig := flag.String("kubeconfig", "", "path to kubeconfig, leave empty for in-cluster")
 	listenAddr := flag.String("address", ":8080", "HTTP server listen address")
-	authToken := flag.String("auth-token", "", "bearer token gating mutating endpoints; empty disables auth")
 
 	flag.Parse()
 
@@ -28,7 +28,8 @@ func main() {
 	}
 	fmt.Printf("Connected to Kubernetes %s\n", version)
 
-	srv := server.New(clientset, k8s.NewPinger(clientset), isolation.NewManager(clientset), *authToken)
+	srv := server.New(clientset, k8s.NewPinger(clientset), isolation.NewManager(clientset))
+
 
 	fmt.Printf("Server listening on %s\n", *listenAddr)
 	if err := http.ListenAndServe(*listenAddr, srv.Handler()); err != nil {

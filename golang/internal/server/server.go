@@ -15,12 +15,11 @@ type Server struct {
 	cs        kubernetes.Interface
 	pinger    k8s.Pinger
 	mgr       *isolation.Manager
-	authToken string
 }
 
 // New constructs a Server.
-func New(cs kubernetes.Interface, pinger k8s.Pinger, mgr *isolation.Manager, authToken string) *Server {
-	return &Server{cs: cs, pinger: pinger, mgr: mgr, authToken: authToken}
+func New(cs kubernetes.Interface, pinger k8s.Pinger, mgr *isolation.Manager) *Server {
+	return &Server{cs: cs, pinger: pinger, mgr: mgr}
 }
 
 // Handler returns the configured router.
@@ -30,7 +29,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/readyz", s.handleReadyz)
 	mux.HandleFunc("/deployments", s.handleDeployments)
 	mux.HandleFunc("/isolation", s.handleIsolationCollection)
-	mux.HandleFunc("/isolation/", s.handleIsolationItem) 
+	mux.HandleFunc("/isolation/", s.handleIsolationItem)
 	return mux
 }
 
@@ -51,16 +50,6 @@ func (s *Server) handleReadyz(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 }
 
-// authorized reports whether the request carries the configured bearer token.
-// An empty configured token disables auth (documented, local/dev only).
-func (s *Server) authorized(r *http.Request) bool {
-	if s.authToken == "" {
-		return true
-	}
-	const prefix = "Bearer "
-	h := r.Header.Get("Authorization")
-	return len(h) > len(prefix) && h[:len(prefix)] == prefix && h[len(prefix):] == s.authToken
-}
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")

@@ -1,0 +1,126 @@
+name: tyk-sre-assignment
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: golang
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: golang/go.mod
+      - run: go vet ./...
+      - run: go test ./... -race
+      
+      - uses: golangci/golangci-lint-action@v7   # v7 installs golangci-lint v2
+        with:
+          version: latest
+          working-directory: golang
+
+      - uses: azure/setup-helm@v4
+      - run: helm lint ../helm
+
+
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Trivy config scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+
+
+  build:
+    needs: [test, security]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Convert GitHub owner to lowercase for Docker/GHCR
+      - name: Set lowercase owner
+        run: |
+          echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ghcr.io/${{ env.OWNER }}/tyk-sre-assignment:${{ github.sha }}
+            ghcr.io/${{ env.OWNER }}/tyk-sre-assignment:latest
+
+
+  chart:
+    needs: [test, security]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set lowercase owner
+        run: |
+          echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+
+      - uses: azure/setup-helm@v4
+
+      - name: Lint Helm chart
+        run: |
+          helm lint ./helm
+
+      - name: Package Helm chart
+        run: |
+          helm package ./helm
+
+      - name: Login to GHCR Helm registry
+        if: github.event_name != 'pull_request'
+        run: |
+          helm registry login ghcr.io \
+            -u "${{ github.actor }}" \
+            -p "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Push Helm chart to GHCR OCI
+        if: github.event_name != 'pull_request'
+        run: |
+          helm push tyk-sre-assignment-*.tgz \
+            oci://ghcr.io/${{ env.OWNER }}/charts
