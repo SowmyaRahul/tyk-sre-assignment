@@ -41,7 +41,7 @@ func TestBuildPolicies(t *testing.T) {
 		assert.Len(t, pols, 2)
 		assert.Equal(t, ManagedByValue, pa.Labels[LabelManagedBy])
 		assert.Equal(t, id, pa.Labels[LabelIsolationID])
-		assert.NotEmpty(t, pa.Annotations["keights-pod-tracker.io/pair"])
+		assert.NotEmpty(t, pa.Annotations["tyk-sre-assignment.io/pair"])
 		assert.Equal(t, "checkout", pa.Spec.PodSelector.MatchLabels["app"])
 		assert.Len(t, pa.Spec.PolicyTypes, 2)
 		assert.Equal(t, "kpt-iso-"+id+"-a", pa.Name)
