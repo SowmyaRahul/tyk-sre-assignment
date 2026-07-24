@@ -21,7 +21,7 @@ func TestDeployments(t *testing.T) {
 			Spec:       appsv1.DeploymentSpec{Replicas: &rep},
 			Status:     appsv1.DeploymentStatus{ObservedGeneration: 1, ReadyReplicas: 1},
 		})
-		srv := New(cs, stubPinger{})
+		srv := New(cs, stubPinger{}, nil, "")
 
 		rec := httptest.NewRecorder()
 		srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/deployments", nil))
