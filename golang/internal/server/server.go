@@ -30,7 +30,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/readyz", s.handleReadyz)
 	mux.HandleFunc("/deployments", s.handleDeployments)
 	mux.HandleFunc("/isolation", s.handleIsolationCollection)
-	mux.HandleFunc("/isolation/", s.handleIsolationItem) 
+	mux.HandleFunc("/isolation/", s.handleIsolationItem) // commit_13
 	return mux
 }
 

@@ -25,6 +25,7 @@ func TestHealthz(t *testing.T) {
 		rec := httptest.NewRecorder()
 		srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
 
+		// Then it is still 200 ok — liveness must not depend on the API server
 		assert.Equal(t, http.StatusOK, rec.Code)
 		body, err := io.ReadAll(rec.Result().Body)
 		assert.NoError(t, err)
