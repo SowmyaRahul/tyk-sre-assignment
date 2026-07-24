@@ -22,14 +22,39 @@ jobs:
           go-version-file: golang/go.mod
       - run: go vet ./...
       - run: go test ./... -race
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@v7   # v7 installs golangci-lint v2
         with:
+          version: latest                        # must be a v2 build (Go >= 1.26) to lint this module
           working-directory: golang
       - uses: azure/setup-helm@v4
       - run: helm lint ../helm
 
+  # ---- Trivy: vuln scan (deps) + config scan (Dockerfile/Helm/k8s). Report-only for now
+  #      (set exit-code: '1' to enforce; the scaffold pins old client-go which will flag). ----
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy filesystem scan (vulnerabilities)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'
+      - name: Trivy config scan (Dockerfile / Helm / k8s misconfig)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+
+  # ---- build & push the container image to GHCR (push only on main) ----
   build:
-    needs: test
+    needs: [test, security]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,8 +71,22 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          # Push only on main; PRs build for validation but do not push.
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ghcr.io/SowmyaRahul/tyk-sre-assignment:${{ github.sha }}
-            ghcr.io/SowmyaRahul/tyk-sre-assignment:latest
+            ghcr.io/${{ github.repository_owner }}/tyk-sre-assignment:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/tyk-sre-assignment:latest
+
+  chart:
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Package chart
+        run: helm package /helm
+      - name: Push chart to GHCR (OCI)
+        if: github.event_name != 'pull_request'
+        run: |
+          helm registry login ghcr.io -u "${{ github.actor }}" -p "${{ secrets.GITHUB_TOKEN }}"
+          helm push tyk-sre-assignment-*.tgz "oci://ghcr.io/${{ github.repository_owner }}/charts"
+          # -> installable via: helm install kpt oci://ghcr.io/<owner>/charts/tyk-sre-assignment --version <version>
