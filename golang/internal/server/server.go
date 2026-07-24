@@ -29,7 +29,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/healthz", s.handleHealthz)
 	mux.HandleFunc("/readyz", s.handleReadyz)
 	mux.HandleFunc("/deployments", s.handleDeployments)
-	mux.HandleFunc("/isolation", s.handleIsolationCollection) // commit_11
+	mux.HandleFunc("/isolation", s.handleIsolationCollection)
+	mux.HandleFunc("/isolation/", s.handleIsolationItem) 
 	return mux
 }
 

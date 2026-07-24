@@ -3,10 +3,12 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/SowmyaRahul/tyk-sre-assignment/internal/isolation"
 )
 
+// handleIsolationCollection serves POST (create, gated) and GET (list, open).
 func (s *Server) handleIsolationCollection(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
@@ -15,9 +17,40 @@ func (s *Server) handleIsolationCollection(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		s.createIsolation(w, r)
+	case http.MethodGet:
+		s.listIsolation(w, r)
 	default:
-		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use POST")
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use POST or GET")
 	}
+}
+
+// handleIsolationItem serves DELETE /isolation/{id} (gated).
+func (s *Server) handleIsolationItem(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use DELETE")
+		return
+	}
+	if !s.authorized(r) {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "valid bearer token required")
+		return
+	}
+	// Go 1.22+ has r.PathValue with method-pattern routes; here we stay compatible
+	// with the simple ServeMux subtree route and parse the id from the path.
+	id := strings.TrimPrefix(r.URL.Path, "/isolation/")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "bad_request", "missing isolation id")
+		return
+	}
+	n, err := s.mgr.Delete(r.Context(), id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "delete_failed", err.Error())
+		return
+	}
+	if n == 0 {
+		writeError(w, http.StatusNotFound, "not_found", "no isolation with that id")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{"id": id, "deleted": n})
 }
 
 func (s *Server) createIsolation(w http.ResponseWriter, r *http.Request) {
@@ -40,4 +73,13 @@ func (s *Server) createIsolation(w http.ResponseWriter, r *http.Request) {
 		status = http.StatusOK
 	}
 	writeJSON(w, status, map[string]interface{}{"id": id, "converged": converged})
+}
+
+func (s *Server) listIsolation(w http.ResponseWriter, r *http.Request) {
+	items, err := s.mgr.List(r.Context())
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "list_failed", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{"isolations": items})
 }
