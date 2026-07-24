@@ -5,19 +5,22 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/SowmyaRahul/tyk-sre-assignment/internal/isolation"
 	"github.com/SowmyaRahul/tyk-sre-assignment/internal/k8s"
 	"k8s.io/client-go/kubernetes"
 )
 
 // Server wires HTTP handlers to the k8s-facing components.
 type Server struct {
-	cs     kubernetes.Interface
-	pinger k8s.Pinger
+	cs        kubernetes.Interface
+	pinger    k8s.Pinger
+	mgr       *isolation.Manager
+	authToken string
 }
 
 // New constructs a Server.
-func New(cs kubernetes.Interface, pinger k8s.Pinger) *Server {
-	return &Server{cs: cs, pinger: pinger}
+func New(cs kubernetes.Interface, pinger k8s.Pinger, mgr *isolation.Manager, authToken string) *Server {
+	return &Server{cs: cs, pinger: pinger, mgr: mgr, authToken: authToken}
 }
 
 // Handler returns the configured router.
@@ -25,7 +28,8 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", s.handleHealthz)
 	mux.HandleFunc("/readyz", s.handleReadyz)
-	mux.HandleFunc("/deployments", s.handleDeployments) // commit_6
+	mux.HandleFunc("/deployments", s.handleDeployments)
+	mux.HandleFunc("/isolation", s.handleIsolationCollection) // commit_11
 	return mux
 }
 
@@ -44,6 +48,17 @@ func (s *Server) handleReadyz(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
+}
+
+// authorized reports whether the request carries the configured bearer token.
+// An empty configured token disables auth (documented, local/dev only).
+func (s *Server) authorized(r *http.Request) bool {
+	if s.authToken == "" {
+		return true
+	}
+	const prefix = "Bearer "
+	h := r.Header.Get("Authorization")
+	return len(h) > len(prefix) && h[:len(prefix)] == prefix && h[len(prefix):] == s.authToken
 }
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
