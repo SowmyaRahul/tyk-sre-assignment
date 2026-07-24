@@ -8,14 +8,10 @@ import (
 	"github.com/SowmyaRahul/tyk-sre-assignment/internal/isolation"
 )
 
-// handleIsolationCollection serves POST (create, gated) and GET (list, open).
+// handleIsolationCollection serves POST (create) and GET (list).
 func (s *Server) handleIsolationCollection(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
-		if !s.authorized(r) {
-			writeError(w, http.StatusUnauthorized, "unauthorized", "valid bearer token required")
-			return
-		}
 		s.createIsolation(w, r)
 	case http.MethodGet:
 		s.listIsolation(w, r)
@@ -24,18 +20,12 @@ func (s *Server) handleIsolationCollection(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-// handleIsolationItem serves DELETE /isolation/{id} (gated).
+// handleIsolationItem serves DELETE /isolation/{id}.
 func (s *Server) handleIsolationItem(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
 		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use DELETE")
 		return
 	}
-	if !s.authorized(r) {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "valid bearer token required")
-		return
-	}
-	// Go 1.22+ has r.PathValue with method-pattern routes; here we stay compatible
-	// with the simple ServeMux subtree route and parse the id from the path.
 	id := strings.TrimPrefix(r.URL.Path, "/isolation/")
 	if id == "" {
 		writeError(w, http.StatusBadRequest, "bad_request", "missing isolation id")
