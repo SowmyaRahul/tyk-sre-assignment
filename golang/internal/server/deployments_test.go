@@ -34,7 +34,9 @@ func TestDeployments(t *testing.T) {
 	})
 
 	t.Run("when a non-GET method is used then it returns 405", func(t *testing.T) {
-		srv := New(fake.NewSimpleClientset(), stubPinger{})
+		// Given a server
+		srv := New(fake.NewSimpleClientset(), stubPinger{}, nil, "")
+		// When we POST /deployments
 		rec := httptest.NewRecorder()
 		srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/deployments", nil))
 		assert.Equal(t, http.StatusMethodNotAllowed, rec.Code)
